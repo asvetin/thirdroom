@@ -27,6 +27,7 @@ import olmLegacyJsPath from "@matrix-org/olm/olm_legacy.js?url";
 
 import { Text } from "../atoms/text/Text";
 import { HydrogenContext, HydrogenContextProvider } from "../hooks/useHydrogen";
+import { useQueryParams } from "../hooks/useQueryParams";
 import { useAsyncCallback } from "../hooks/useAsyncCallback";
 import { LoadingScreen } from "./components/loading-screen/LoadingScreen";
 import { Button } from "../atoms/button/Button";
@@ -379,6 +380,7 @@ function useSession(client: Client, platform: Platform, urlRouter: URLRouter) {
 
 export function HydrogenRootView() {
   const sessionInfo = getSessionInfo();
+  const queryParams = useQueryParams()
 
   const [{ client, containerEl, platform, navigation, urlRouter, logger }] = useState(initHydrogen);
 
@@ -441,12 +443,12 @@ export function HydrogenRootView() {
   }
 
   if (!session && !sessionInfo && href.match(WORLD_PATH_REG)) {
-    return <Navigate to="/login" replace={true} />;
+    return <Navigate to="/login" replace={true} state={{ queryParams }} />;
   }
 
   if (!landingPath && !loginPath && !session && !sessionInfo) {
     //return <Navigate to="/landing" replace={true} />;
-    return <Navigate to="/login" replace={true} />;
+    return <Navigate to="/login" replace={true} state={{ queryParams }} />;
   }
 
   const onLoginRedirectPath = localStorage.getItem("on_login_redirect_uri")?.match(WORLD_PATH_REG)?.[1];

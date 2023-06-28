@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLocation } from "react-router-dom";
 import {
   AbortableOperation,
   Client,
@@ -25,6 +24,7 @@ import { Button } from "../../atoms/button/Button";
 import { Label } from "../../atoms/text/Label";
 import { SettingTile } from "../components/setting-tile/SettingTile";
 import { useHydrogen } from "../../hooks/useHydrogen";
+import { useGidLoginParams } from "../../hooks/useGidLoginParams";
 import { Icon } from "../../atoms/icon/Icon";
 import PlanetIC from "../../../../res/ic/planet.svg";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -37,23 +37,6 @@ import { getMissingFeature, MissingFeature } from "../../utils/featureCheck";
 import { MissingFeatureModal } from "./MissingFeatureModal";
 import "./LoginView.css";
 import { useIsMounted } from "../../hooks/useIsMounted";
-
-function useQueryParams() {
-  const { search, hash } = useLocation()
-  const allParams = []
-  if (search !== undefined && search.length > 0) {
-    allParams.push(...new URLSearchParams(search).entries())
-  }
-  if (hash !== undefined && hash.length > 1) {
-    allParams.push(...new URLSearchParams(hash.substring(1)).entries())
-  }
-
-  return allParams.reduce<Record<string, string>>((acc, [k,v]) => {
-    acc[k] = v
-
-    return acc
-  }, {})
-}
 
 function useQueryHomeserver(client: Client, homeserver: string) {
   const queryRef = useRef<AbortableOperation<QueryLoginResult>>();
@@ -191,14 +174,16 @@ export default function LoginView() {
     form.homeserver.value = platform.config.defaultHomeServer;
   }, [platform]);
 
-  const { session_state, access_token, error_description } = useQueryParams()
+  const { access_token, error_description } = useGidLoginParams()
+
+  console.log('THIS THAT', access_token, error_description)
 
   useEffect(() => {
     if (error_description !== undefined) {
       setOidcError(error_description);
     }
 
-    if (session_state === undefined || access_token === undefined) {
+    if (access_token === undefined) {
       setAuthenticating(false)
       return
     }
@@ -232,7 +217,7 @@ export default function LoginView() {
       setAuthenticating(false)
       setOidcError(`GiD token exchange error: ${e.message}`)
     })
-  }, [ session_state, access_token, error_description, client, platform.config.gid.domain ])
+  }, [ access_token, error_description, client, platform.config.gid.domain ])
 
   const handleHomeserverSelect = (hs: string) => {
     if (!formRef.current) return;
@@ -269,7 +254,7 @@ export default function LoginView() {
       `auth.${platform.config.gid.domain}`,
       '/realms/globalid/protocol/openid-connect/auth',
       `?client_id=${platform.config.gid.kc_client_id}`,
-      '&response_type=token&scope=openid',
+      '&response_type=token&scope=openid&state=gid_login',
       //'&response_mode=query',
       `&redirect_uri=${redirect}`,
     ].join('')
