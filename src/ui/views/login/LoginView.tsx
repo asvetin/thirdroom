@@ -258,6 +258,12 @@ export default function LoginView() {
   };
 
   const handleLoginWithGiD = async () => {
+    const redirect = [
+      window.location.protocol,
+      '//',
+      window.location.host,
+      window.location.pathname
+    ].join('')
     const loginUrl = [
       'https://',
       `auth.${platform.config.gid.domain}`,
@@ -265,7 +271,7 @@ export default function LoginView() {
       `?client_id=${platform.config.gid.kc_client_id}`,
       '&response_type=token&scope=openid',
       //'&response_mode=query',
-      '&redirect_uri=http://localhost:3000/login',
+      `&redirect_uri=${redirect}`,
     ].join('')
 
     window.location.href = loginUrl
