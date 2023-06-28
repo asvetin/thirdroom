@@ -20,7 +20,7 @@ import { overlayVisibilityAtom } from "../../state/overlayVisibility";
 import { CmdPanel, defaultActions } from "./cmd-panel/CmdPanel";
 import { useAccountManagementAction, useLandingPageAction, useUserProfileAction } from "./cmd-panel/actions";
 import { editorEnabledAtom } from "../../state/editor";
-import { WhatsNew } from "./whats-new/WhatsNew";
+//import { WhatsNew } from "./whats-new/WhatsNew";
 import { FirefoxPerfAlert } from "./dialogs/FirefoxPerfAlert";
 
 function RegisterKBarActions() {
@@ -66,7 +66,6 @@ export default function SessionView() {
               {overlayVisible && <Overlay />}
               {!editorEnabled && <StatusBar />}
               <FirefoxPerfAlert />
-              <WhatsNew />
             </MainThreadContextProvider>
           ) : (
             <LoadingScreen message="Initializing engine..." />

@@ -9,6 +9,7 @@ import "./EntityTooltip.css";
 export interface IPortalProcess {
   joining?: boolean;
   error?: Error;
+  hasRequirements?: string;
 }
 
 interface EntityTooltipProps {
@@ -113,6 +114,16 @@ export function EntityTooltip({ activeEntity, portalProcess }: EntityTooltipProp
               <Text variant="b3" color="world">
                 {portalProcess.error.message ?? "Unknown error joining portal."}
               </Text>
+            )}
+            {portalProcess.hasRequirements && (
+              <div>
+                <Text variant="b3" color="world" className="EntityTooltip__kvaj">
+                  Hello mista minista!
+                </Text>
+                <Text variant="b3" color="world" className="EntityTooltip__kvaj">
+                  {portalProcess.hasRequirements}
+                </Text>
+              </div>
             )}
             {!portalProcess.joining && (
               <Text variant="b3" color="world">

@@ -22,6 +22,7 @@ import { useWorldLoader } from "../../../hooks/useWorldLoader";
 export interface IPortalProcess {
   joining?: boolean;
   error?: Error;
+  hasRequirements?: string;
 }
 
 interface WorldInteractionProps {
@@ -49,8 +50,18 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
 
       try {
         setPortalProcess({});
+        console.log('TIS THAT', window.fetch, interaction)
+
+
         const { uri } = interaction;
+        if (uri === '') {
+          //await fetch('https://awerawr/can-join/:portal_name')
+        }
         if (!uri) throw Error("Portal does not have valid matrix id/alias");
+
+        setPortalProcess({ hasRequirements: 'Open your GiD app and check for requirements..' });
+
+        //if(1=='1') { return }
 
         const parsedUri = parseMatrixUri(uri);
         if (parsedUri instanceof URL) {

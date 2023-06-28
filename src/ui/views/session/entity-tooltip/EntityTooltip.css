@@ -24,3 +24,9 @@
   padding: 0px 3px;
   bottom: 1px;
 }
+
+.EntityTooltip__kvaj {
+  background-color: #ff9933;
+  font-size: 33px;
+  line-height: 33px;
+}

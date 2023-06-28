@@ -363,6 +363,10 @@ declare module "@thirdroom/hydrogen-view-sdk" {
     mediaDevices: MediaDevices;
 
     config: {
+      gid: {
+        kc_client_id: string
+        domain: string
+      }
       defaultHomeServer: string;
       staticClients: Record<
         string,
@@ -1001,6 +1005,13 @@ declare module "@thirdroom/hydrogen-view-sdk" {
     startWithLogin(loginMethod: ILoginMethod, options?: { inspectAccountSetup: boolean }): Promise<void>;
 
     startLogout(sessionId: string): Promise<void>;
+
+    startWithAuthData(data: {
+      accessToken: string
+      deviceId: string
+      userId: string
+      homeserver: string
+    })
 
     dispose(): void;
   }

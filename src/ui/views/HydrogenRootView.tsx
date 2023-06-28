@@ -445,7 +445,8 @@ export function HydrogenRootView() {
   }
 
   if (!landingPath && !loginPath && !session && !sessionInfo) {
-    return <Navigate to="/landing" replace={true} />;
+    //return <Navigate to="/landing" replace={true} />;
+    return <Navigate to="/login" replace={true} />;
   }
 
   const onLoginRedirectPath = localStorage.getItem("on_login_redirect_uri")?.match(WORLD_PATH_REG)?.[1];

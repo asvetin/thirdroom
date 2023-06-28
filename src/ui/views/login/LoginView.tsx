@@ -1,4 +1,14 @@
-import { ChangeEvent, KeyboardEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+/* eslint-disable camelcase */
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useLocation } from "react-router-dom";
 import {
   AbortableOperation,
   Client,
@@ -27,6 +37,23 @@ import { getMissingFeature, MissingFeature } from "../../utils/featureCheck";
 import { MissingFeatureModal } from "./MissingFeatureModal";
 import "./LoginView.css";
 import { useIsMounted } from "../../hooks/useIsMounted";
+
+function useQueryParams() {
+  const { search, hash } = useLocation()
+  const allParams = []
+  if (search !== undefined && search.length > 0) {
+    allParams.push(...new URLSearchParams(search).entries())
+  }
+  if (hash !== undefined && hash.length > 1) {
+    allParams.push(...new URLSearchParams(hash.substring(1)).entries())
+  }
+
+  return allParams.reduce<Record<string, string>>((acc, [k,v]) => {
+    acc[k] = v
+
+    return acc
+  }, {})
+}
 
 function useQueryHomeserver(client: Client, homeserver: string) {
   const queryRef = useRef<AbortableOperation<QueryLoginResult>>();
@@ -164,6 +191,49 @@ export default function LoginView() {
     form.homeserver.value = platform.config.defaultHomeServer;
   }, [platform]);
 
+  const { session_state, access_token, error_description } = useQueryParams()
+
+  useEffect(() => {
+    if (error_description !== undefined) {
+      setOidcError(error_description);
+    }
+
+    if (session_state === undefined || access_token === undefined) {
+      setAuthenticating(false)
+      return
+    }
+
+    setAuthenticating(true)
+
+    async function exchangeGidMatrixTokens () {
+      const url = `https://api.${platform.config.gid.domain}/v1/matrix/login`
+      const reqResult = await fetch(url, { headers: { authorization: `Bearer ${access_token}` } })
+      const body = await reqResult.json()
+      if (reqResult.status < 200 || reqResult.status >= 300) {
+        throw new Error(`${reqResult.status} - ${body.error_code || ''} ${body.message || ''}`)
+      } else if (body.access_token !== undefined && body.device_id !== undefined && body.user_id !== undefined) {
+        await client.startWithAuthData({
+          accessToken: body.access_token,
+          deviceId: body.device_id,
+          userId: body.user_id,
+          homeserver: `https://matrix.${platform.config.gid.domain}`,
+        })
+
+        setAuthenticating(false)
+
+        window.location.href = '/'
+
+      } else {
+        throw new Error(`Do not know how to handle response: ${JSON.stringify(body, null, 2)}`)
+      }
+    }
+
+    exchangeGidMatrixTokens().catch(e => {
+      setAuthenticating(false)
+      setOidcError(`GiD token exchange error: ${e.message}`)
+    })
+  }, [ session_state, access_token, error_description, client, platform.config.gid.domain ])
+
   const handleHomeserverSelect = (hs: string) => {
     if (!formRef.current) return;
     const form = formRef.current.elements as typeof formRef.current.elements & {
@@ -187,9 +257,24 @@ export default function LoginView() {
     queryHomeserver(hs);
   };
 
+  const handleLoginWithGiD = async () => {
+    const loginUrl = [
+      'https://',
+      `auth.${platform.config.gid.domain}`,
+      '/realms/globalid/protocol/openid-connect/auth',
+      `?client_id=${platform.config.gid.kc_client_id}`,
+      '&response_type=token&scope=openid',
+      //'&response_mode=query',
+      '&redirect_uri=http://localhost:3000/login',
+    ].join('')
+
+    window.location.href = loginUrl
+  }
+
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!result) return;
+
 
     const form = event.currentTarget.elements as typeof event.currentTarget.elements & {
       homeserver: HTMLInputElement;
@@ -200,10 +285,16 @@ export default function LoginView() {
       return;
     }
 
+
     let loginMethod;
     setAuthenticating(true);
     setOidcError(undefined);
     const guest = (event.nativeEvent as SubmitEvent).submitter?.id === "guest";
+
+    if (form.homeserver.value.includes('globalid')) {
+      await handleLoginWithGiD()
+      return
+    }
 
     if (result.oidc) {
       const { issuer } = result.oidc;
@@ -245,6 +336,20 @@ export default function LoginView() {
     }
     setAuthenticating(false);
   };
+
+  const renderGiDLogin = () => (
+    <>
+      <div className="LoginView__iconAndText">
+        <Icon src="https://cdn.global.id/assets/logo/logo-square.png" size="lg" />
+        <Text variant="s1" weight="bold">
+          Login to GiD
+        </Text>
+      </div>
+        <Button size="lg" variant="primary" type="submit" disabled={authenticating}>
+          {authenticating ? <Dots color="on-primary" /> : "Proceed to login"}
+      </Button>
+    </>
+  )
 
   const renderPasswordLogin = () => (
     <>
@@ -362,7 +467,9 @@ export default function LoginView() {
                     </Button>
                   )
                 ) : (
-                  result.password && renderPasswordLogin()
+                  result.homeserver.includes('globalid')
+                    ? renderGiDLogin()
+                    : result.password && renderPasswordLogin()
                 )}
               </>
             ) : (
