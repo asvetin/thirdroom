@@ -176,8 +176,6 @@ export default function LoginView() {
 
   const { access_token, error_description } = useGidLoginParams()
 
-  console.log('THIS THAT', access_token, error_description)
-
   useEffect(() => {
     if (error_description !== undefined) {
       setOidcError(error_description);
@@ -246,9 +244,9 @@ export default function LoginView() {
     const redirect = [
       window.location.protocol,
       '//',
-      window.location.host,
-      window.location.pathname
+      window.location.host
     ].join('')
+
     const loginUrl = [
       'https://',
       `auth.${platform.config.gid.domain}`,
