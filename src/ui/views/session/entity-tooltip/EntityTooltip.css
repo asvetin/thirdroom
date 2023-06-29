@@ -39,3 +39,7 @@
 .EntityTooltip__tooltipMsg {
   background-color: #467c48;
 }
+
+.EntityTooltip__tooltipMsg {
+  padding: 4px;
+}

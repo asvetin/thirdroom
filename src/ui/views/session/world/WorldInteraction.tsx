@@ -154,15 +154,69 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
         unSubStatusObserver?.();
       };
     },
-    [session, selectWorld, exitWorld, navigateEnterWorld, isMounted, setPortalProcess]
+    [session, selectWorld, exitWorld, navigateEnterWorld, isMounted, setPortalProcess, handleGiDPortal]
   );
 
   const handleInteraction = useCallback(
     (interaction?: InteractionState) => {
-      if (!interaction) return setActiveEntity(undefined);
-      const { interactableType, action, peerId } = interaction;
 
-      if (action === InteractableAction.Grab) {
+
+      async function enterTheCar(carName: string) {
+        console.log('gid: enter the car %o', carName)
+        tooltipMsgs[carName] = 'Requesting access to the car'
+        setTooltipMsgs({ ...tooltipMsgs })
+
+        await fetch(`${VERIFIER_API}/proof?gid_uuid=${gidAccount.sub}&room=${encodeURIComponent('#car:globalid.dev')}`)
+        tooltipMsgs[carName] = `Check your phone for offer or proof..`
+        setTooltipMsgs({ ...tooltipMsgs })
+
+        console.log('gid: car access requested', carName)
+
+        setTimeout(() => {
+          tooltipMsgs[carName] = undefined
+          setTooltipMsgs({ ...tooltipMsgs })
+        }, 2000)
+      }
+
+      async function giveUserACookie(peerId: string, interaction: InteractionState) {
+        const peerStorageKey = `gid_peer_${peerId}`
+        const userInfoStr = localStorage.getItem(peerStorageKey) as string | null
+        let userInfo: { gid_name: string, gid_uuid: string } | null = null
+
+        if (userInfoStr != null) {
+          userInfo = JSON.parse(userInfoStr) as { gid_name: string, gid_uuid: string }
+        } else {
+            const userGidUuid = (peerId as string).split(/@|:/g)[1]
+          const response = await fetch(`https://api.globalid.dev/v1/identities/${userGidUuid}`)
+          userInfo = await response.json()
+          localStorage.setItem(peerStorageKey, JSON.stringify(userInfo))
+        }
+
+        console.log('gid: issuing cookie to %o', userInfo, activeEntity)
+
+        tooltipMsgs[peerId] = `Offering ${userInfo!.gid_name} a cookie`
+        setTooltipMsgs({ ...tooltipMsgs })
+
+        const resp = await fetch(`${VERIFIER_API}/issue?gid_uuid=${gidAccount.sub}&other_gid_uuid=${userInfo?.gid_uuid}`)
+
+        console.log('gid: issued cookie %o', resp.status)
+
+        tooltipMsgs[peerId] = `Cookie offered to ${userInfo!.gid_name}`
+        setTooltipMsgs({ ...tooltipMsgs })
+
+        setTimeout(() => {
+          tooltipMsgs[peerId] = undefined
+          setTooltipMsgs({ ...tooltipMsgs })
+        }, 2000)
+      }
+
+
+      if (!interaction) return setActiveEntity(undefined);
+      const { interactableType, action, peerId, name } = interaction;
+
+      if (action === InteractableAction.Interact && name.includes('SM_car')) {
+        enterTheCar(name)
+      } else if (action === InteractableAction.Grab) {
         if (interactableType === InteractableType.Player && typeof peerId === "string") {
           console.log('gid: giving cookie instead of displaying member info')
           giveUserACookie(peerId, interaction)
@@ -186,50 +240,20 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
 
       setActiveEntity(interaction);
     },
-    [handlePortalGrab, setActiveEntity, activeCall]
+    [handlePortalGrab, setActiveEntity, activeCall, tooltipMsgs, activeEntity, gidAccount.sub]
   );
 
   useWorldInteraction(mainThread, handleInteraction);
-
-  async function giveUserACookie(peerId: string, interaction: InteractionState) {
-    const peerStorageKey = `gid_peer_${peerId}`
-    const userInfoStr = localStorage.getItem(peerStorageKey) as string | null
-    let userInfo: { gid_name: string, gid_uuid: string } | null = null
-
-
-    if (userInfoStr != null) {
-      userInfo = JSON.parse(userInfoStr) as { gid_name: string, gid_uuid: string }
-    } else {
-        const userGidUuid = (peerId as string).split(/@|:/g)[1]
-      const response = await fetch(`https://api.globalid.dev/v1/identities/${userGidUuid}`)
-      userInfo = await response.json()
-      localStorage.setItem(peerStorageKey, JSON.stringify(userInfo))
-    }
-
-    console.log('gid: issuing cookie to %o', userInfo, activeEntity)
-
-    tooltipMsgs[peerId] = `Offering ${userInfo!.gid_name} a cookie`
-    setTooltipMsgs(tooltipMsgs)
-
-    const resp = await fetch(`${VERIFIER_API}/issue?gid_uuid=${gidAccount.sub}&other_gid_uuid=${userInfo?.gid_uuid}`)
-
-    console.log('gid: issued cookie %o', resp.status)
-
-    tooltipMsgs[peerId] = `Cookie offered to ${userInfo!.gid_name}`
-    setTooltipMsgs(tooltipMsgs)
-
-    setTimeout(() => {
-      tooltipMsgs[peerId] = undefined
-      setTooltipMsgs(tooltipMsgs)
-    }, 2000)
-  }
 
   const showTooltip = activeEntity && !camRigModule.orbiting
   let tooltipMsg: string | undefined = undefined
 
   if (activeEntity && activeEntity.interactableType === InteractableType.Player) {
     tooltipMsg = tooltipMsgs[activeEntity.peerId!]
+  } else if (activeEntity && activeEntity.interactableType === InteractableType.Interactable) {
+    tooltipMsg = tooltipMsgs[activeEntity.name]
   }
+
 
   return (
     <div>

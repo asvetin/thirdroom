@@ -95,9 +95,20 @@ export function EntityTooltip({ activeEntity, portalProcess, tooltipMsg }: Entit
           </Text>
           <div className="flex flex-column gap-xxs">
             <Text variant="b3" color="world">
-              <span className="EntityTooltip__boxedKey">E</span> /
-              <Icon src={MouseIC} size="sm" className="EntityTooltip__mouseIcon" color="world" />
-              <span> Interact</span>
+              {tooltipMsg ?
+                (
+                  <span className='EntityTooltip__tooltipMsg'>
+                    <span> {tooltipMsg}</span>
+                  </span>
+                )
+                : (
+                  <>
+                    <span className="EntityTooltip__boxedKey">E</span> /
+                    <Icon src={MouseIC} size="sm" className="EntityTooltip__mouseIcon" color="world" />
+                    <span> Interact</span>
+                  </>
+                )
+              }
             </Text>
           </div>
         </>
