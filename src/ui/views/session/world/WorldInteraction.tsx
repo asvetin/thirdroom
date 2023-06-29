@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { GroupCall, Room, RoomStatus, Session } from "@thirdroom/hydrogen-view-sdk";
 import { useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
@@ -41,6 +42,8 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
   const selectWorld = useSetAtom(overlayWorldAtom);
   const isMounted = useIsMounted();
   const [gidAccount] = useLocalStorage<{sub: string}>('gid_account', {sub: '123'})
+
+  const [tooltipMsgs, setTooltipMsgs] = useState<Record<string, string|undefined>>({})
 
   const handleGiDPortal = async (roomNameActual: string): Promise<boolean> => {
     setPortalProcess({
@@ -161,8 +164,10 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
 
       if (action === InteractableAction.Grab) {
         if (interactableType === InteractableType.Player && typeof peerId === "string") {
-          setMembers(true);
-          document.exitPointerLock();
+          console.log('gid: giving cookie instead of displaying member info')
+          giveUserACookie(peerId, interaction)
+          //setMembers(true);
+          //document.exitPointerLock();
           return;
         }
         if (interactableType === InteractableType.Portal) {
@@ -186,6 +191,46 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
 
   useWorldInteraction(mainThread, handleInteraction);
 
+  async function giveUserACookie(peerId: string, interaction: InteractionState) {
+    const peerStorageKey = `gid_peer_${peerId}`
+    const userInfoStr = localStorage.getItem(peerStorageKey) as string | null
+    let userInfo: { gid_name: string, gid_uuid: string } | null = null
+
+
+    if (userInfoStr != null) {
+      userInfo = JSON.parse(userInfoStr) as { gid_name: string, gid_uuid: string }
+    } else {
+        const userGidUuid = (peerId as string).split(/@|:/g)[1]
+      const response = await fetch(`https://api.globalid.dev/v1/identities/${userGidUuid}`)
+      userInfo = await response.json()
+      localStorage.setItem(peerStorageKey, JSON.stringify(userInfo))
+    }
+
+    console.log('gid: issuing cookie to %o', userInfo, activeEntity)
+
+    tooltipMsgs[peerId] = `Offering ${userInfo!.gid_name} a cookie`
+    setTooltipMsgs(tooltipMsgs)
+
+    const resp = await fetch(`${VERIFIER_API}/issue?gid_uuid=${gidAccount.sub}&other_gid_uuid=${userInfo?.gid_uuid}`)
+
+    console.log('gid: issued cookie %o', resp.status)
+
+    tooltipMsgs[peerId] = `Cookie offered to ${userInfo!.gid_name}`
+    setTooltipMsgs(tooltipMsgs)
+
+    setTimeout(() => {
+      tooltipMsgs[peerId] = undefined
+      setTooltipMsgs(tooltipMsgs)
+    }, 2000)
+  }
+
+  const showTooltip = activeEntity && !camRigModule.orbiting
+  let tooltipMsg: string | undefined = undefined
+
+  if (activeEntity && activeEntity.interactableType === InteractableType.Player) {
+    tooltipMsg = tooltipMsgs[activeEntity.peerId!]
+  }
+
   return (
     <div>
       {!("isBeingCreated" in world) && (
@@ -194,8 +239,8 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
         </Dialog>
       )}
       {!camRigModule.orbiting && <Reticle />}
-      {activeEntity && !camRigModule.orbiting && (
-        <EntityTooltip activeEntity={activeEntity} portalProcess={portalProcess} />
+      {showTooltip && (
+        <EntityTooltip activeEntity={activeEntity} portalProcess={portalProcess} tooltipMsg={tooltipMsg} />
       )}
     </div>
   );

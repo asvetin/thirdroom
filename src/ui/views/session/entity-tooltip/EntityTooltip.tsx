@@ -23,6 +23,7 @@ export interface IPortalProcess {
 interface EntityTooltipProps {
   activeEntity: InteractionState;
   portalProcess: IPortalProcess;
+  tooltipMsg?: string
 }
 
 interface GidAccountI {
@@ -35,7 +36,7 @@ interface GidPeerUserI {
   display_image_url: string | null
 }
 
-export function EntityTooltip({ activeEntity, portalProcess }: EntityTooltipProps) {
+export function EntityTooltip({ activeEntity, portalProcess, tooltipMsg }: EntityTooltipProps) {
 
   const [gidAccount] = useLocalStorage<GidAccountI>('gid_account', { globalid: 'mista minista' })
 
@@ -70,8 +71,19 @@ export function EntityTooltip({ activeEntity, portalProcess }: EntityTooltipProp
               {gidPeerUser ? `gid name: ${gidPeerUser.gid_name}` : activeEntity.peerId}
             </Text>
             <Text variant="b3" color="world">
-              <span className="EntityTooltip__boxedKey">E</span>
-              <span> More Info</span>
+              {tooltipMsg ?
+                (
+                  <span className='EntityTooltip__tooltipMsg'>
+                    <span> {tooltipMsg}</span>
+                  </span>
+                )
+                : (
+                  <>
+                    <span className="EntityTooltip__boxedKey">E</span>
+                    <span> Give Cookie :)</span>
+                  </>
+                )
+              }
             </Text>
           </div>
         </>

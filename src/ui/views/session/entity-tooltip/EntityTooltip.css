@@ -28,12 +28,14 @@
 .EntityTooltip__requirements {
   background-color: #7c2f5d;
 }
-.EntityTooltip__requirements > * {
+.EntityTooltip__requirements > *,
+.EntityTooltip__tooltipMsg {
   font-size: 23px;
   line-height: 27px;
   margin: 4px 6px;
 }
 
-.EntityTooltip__requirements.checking {
+.EntityTooltip__requirements.checking,
+.EntityTooltip__tooltipMsg {
   background-color: #467c48;
 }
