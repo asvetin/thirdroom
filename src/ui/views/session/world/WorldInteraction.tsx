@@ -41,53 +41,55 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
   const { exitWorld } = useWorldLoader();
   const selectWorld = useSetAtom(overlayWorldAtom);
   const isMounted = useIsMounted();
-  const [gidAccount] = useLocalStorage<{sub: string}>('gid_account', {sub: '123'})
+  const [gidAccount] = useLocalStorage<{sub: string, globalid: string}>('gid_account', {sub: '123', globalid: 'foo'})
 
   const [tooltipMsgs, setTooltipMsgs] = useState<Record<string, string|undefined>>({})
 
-  const handleGiDPortal = async (roomNameActual: string): Promise<boolean> => {
-    setPortalProcess({
-      hasRequirements: {
-        checking: true,
-        msg: 'Bitte warten..',
-      }
-    })
-
-    const roomName = encodeURIComponent(roomNameActual)
-
-    const accessResponse = await fetch(`${VERIFIER_API}/room_access?gid_uuid=${gidAccount.sub}&room=${roomName}`)
-    const hasAccess = await accessResponse.json() as { hasAccess: boolean }
-
-    console.log('gid: user has access to %o: %O', roomName, hasAccess)
-
-    if (hasAccess.hasAccess === true) {
-      return true
-    }
-
-    const accResponse = await fetch(`${VERIFIER_API}/proof?gid_uuid=${gidAccount.sub}&room=${roomName}`)
-
-    if (accResponse.status !== 200) {
-      setPortalProcess({
-        hasRequirements: {
-          checking: false,
-          msg: 'Sorry our Demo backend is on vacation.',
-        }
-      })
-
-    } else {
-      setPortalProcess({
-        hasRequirements: {
-          checking: true,
-          msg: 'Open your GiD app and approve proof request',
-        }
-      })
-    }
-
-    return false
-  }
 
   const handlePortalGrab = useCallback(
     async (interaction) => {
+
+      const handleGiDPortal = async (roomNameActual: string): Promise<boolean> => {
+        setPortalProcess({
+          hasRequirements: {
+            checking: true,
+            msg: 'Bitte warten..',
+          }
+        })
+
+        const roomName = encodeURIComponent(roomNameActual)
+
+        const accessResponse = await fetch(`${VERIFIER_API}/room_access?gid_uuid=${gidAccount.sub}&room=${roomName}`)
+        const hasAccess = await accessResponse.json() as { hasAccess: boolean }
+
+        console.log('gid: user has access to %o: %O', roomName, hasAccess)
+
+        if (hasAccess.hasAccess === true) {
+          return true
+        }
+
+        const accResponse = await fetch(`${VERIFIER_API}/proof?gid_uuid=${gidAccount.sub}&room=${roomName}`)
+
+        if (accResponse.status !== 200) {
+          setPortalProcess({
+            hasRequirements: {
+              checking: false,
+              msg: 'Sorry our Demo backend is on vacation.',
+            }
+          })
+
+        } else {
+          setPortalProcess({
+            hasRequirements: {
+              checking: true,
+              msg: 'Open your GiD app and approve proof request',
+            }
+          })
+        }
+
+        return false
+      }
+
       let unSubStatusObserver: () => void | undefined;
 
       try {
@@ -154,7 +156,7 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
         unSubStatusObserver?.();
       };
     },
-    [session, selectWorld, exitWorld, navigateEnterWorld, isMounted, setPortalProcess, handleGiDPortal]
+    [session, selectWorld, exitWorld, navigateEnterWorld, isMounted, setPortalProcess, gidAccount.sub]
   );
 
   const handleInteraction = useCallback(
@@ -197,7 +199,7 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
         tooltipMsgs[peerId] = `Offering ${userInfo!.gid_name} a cookie`
         setTooltipMsgs({ ...tooltipMsgs })
 
-        const resp = await fetch(`${VERIFIER_API}/issue?gid_uuid=${gidAccount.sub}&other_gid_uuid=${userInfo?.gid_uuid}`)
+        const resp = await fetch(`${VERIFIER_API}/issue?gid_name=${gidAccount.globalid}&gid_uuid=${gidAccount.sub}&other_gid_uuid=${userInfo?.gid_uuid}`)
 
         console.log('gid: issued cookie %o', resp.status)
 
@@ -240,7 +242,7 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
 
       setActiveEntity(interaction);
     },
-    [handlePortalGrab, setActiveEntity, activeCall, tooltipMsgs, activeEntity, gidAccount.sub]
+    [handlePortalGrab, setActiveEntity, activeCall, tooltipMsgs, activeEntity, gidAccount.sub, gidAccount.globalid]
   );
 
   useWorldInteraction(mainThread, handleInteraction);
