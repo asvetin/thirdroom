@@ -366,6 +366,7 @@ declare module "@thirdroom/hydrogen-view-sdk" {
       gid: {
         kc_client_id: string
         domain: string
+        verifier_api: string
       }
       defaultHomeServer: string;
       staticClients: Record<

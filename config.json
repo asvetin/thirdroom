@@ -13,6 +13,7 @@
   },
   "gid": {
     "kc_client_id": "cba8e888-48e8-4fac-a33a-82dd966269c5",
-    "domain": "globalid.dev"
+    "domain": "globalid.dev",
+    "verifier_api": "https://thirdroom-gid-1a76fe926376.herokuapp.com"
   }
 }

@@ -195,6 +195,8 @@ export default function LoginView() {
       if (reqResult.status < 200 || reqResult.status >= 300) {
         throw new Error(`${reqResult.status} - ${body.error_code || ''} ${body.message || ''}`)
       } else if (body.access_token !== undefined && body.device_id !== undefined && body.user_id !== undefined) {
+
+        console.log('gid: exchange gid token for matrix token')
         await client.startWithAuthData({
           accessToken: body.access_token,
           deviceId: body.device_id,
@@ -202,7 +204,17 @@ export default function LoginView() {
           homeserver: `https://matrix.${platform.config.gid.domain}`,
         })
 
+        console.log('gid: assure connection to verifier')
+        const verifierConnection = await fetch(`${platform.config.gid.verifier_api}/connection?token=${access_token}`)
+        console.log('gid: got connection to verifier:', verifierConnection)
+
         setAuthenticating(false)
+
+        localStorage.setItem('gid_account', JSON.stringify({
+          ...JSON.parse(atob((access_token as string).split('.')[1])),
+          access_token,
+          verifierConnection: await verifierConnection.json(),
+        }))
 
         window.location.href = '/'
 
@@ -211,11 +223,13 @@ export default function LoginView() {
       }
     }
 
-    exchangeGidMatrixTokens().catch(e => {
-      setAuthenticating(false)
-      setOidcError(`GiD token exchange error: ${e.message}`)
-    })
-  }, [ access_token, error_description, client, platform.config.gid.domain ])
+    exchangeGidMatrixTokens()
+      .catch(e => {
+        localStorage.removeItem('gid_account')
+        setAuthenticating(false)
+        setOidcError(`GiD token exchange error: ${e.message}`)
+      })
+  }, [ access_token, error_description, client, platform.config.gid ])
 
   const handleHomeserverSelect = (hs: string) => {
     if (!formRef.current) return;

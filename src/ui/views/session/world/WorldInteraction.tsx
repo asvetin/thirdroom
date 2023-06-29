@@ -7,11 +7,12 @@ import { InteractableAction } from "../../../../plugins/interaction/interaction.
 import { useIsMounted } from "../../../hooks/useIsMounted";
 import { useMainThreadContext } from "../../../hooks/useMainThread";
 import { useMemoizedState } from "../../../hooks/useMemoizedState";
+import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { overlayWorldAtom } from "../../../state/overlayWorld";
 import { aliasToRoomId, getMxIdUsername, parseMatrixUri } from "../../../utils/matrixUtils";
 import { InteractionState, useWorldInteraction } from "../../../hooks/useWorldInteraction";
 import { Dialog } from "../../../atoms/dialog/Dialog";
-import { EntityTooltip } from "../entity-tooltip/EntityTooltip";
+import { EntityTooltip, IPortalProcess } from "../entity-tooltip/EntityTooltip";
 import { MemberListDialog } from "../dialogs/MemberListDialog";
 import { getModule } from "../../../../engine/module/module.common";
 import { CameraRigModule } from "../../../../plugins/camera/CameraRig.main";
@@ -19,11 +20,7 @@ import { Reticle } from "../reticle/Reticle";
 import { useWorldNavigator } from "../../../hooks/useWorldNavigator";
 import { useWorldLoader } from "../../../hooks/useWorldLoader";
 
-export interface IPortalProcess {
-  joining?: boolean;
-  error?: Error;
-  hasRequirements?: string;
-}
+const VERIFIER_API = 'https://thirdroom-gid-1a76fe926376.herokuapp.com'
 
 interface WorldInteractionProps {
   session: Session;
@@ -43,6 +40,48 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
   const { exitWorld } = useWorldLoader();
   const selectWorld = useSetAtom(overlayWorldAtom);
   const isMounted = useIsMounted();
+  const [gidAccount] = useLocalStorage<{sub: string}>('gid_account', {sub: '123'})
+
+  const handleGiDPortal = async (roomNameActual: string): Promise<boolean> => {
+    setPortalProcess({
+      hasRequirements: {
+        checking: true,
+        msg: 'Bitte warten..',
+      }
+    })
+
+    const roomName = encodeURIComponent(roomNameActual)
+
+    const accessResponse = await fetch(`${VERIFIER_API}/room_access?gid_uuid=${gidAccount.sub}&room=${roomName}`)
+    const hasAccess = await accessResponse.json() as { hasAccess: boolean }
+
+    console.log('gid: user has access to %o: %O', roomName, hasAccess)
+
+    if (hasAccess.hasAccess === true) {
+      return true
+    }
+
+    const accResponse = await fetch(`${VERIFIER_API}/proof?gid_uuid=${gidAccount.sub}&room=${roomName}`)
+
+    if (accResponse.status !== 200) {
+      setPortalProcess({
+        hasRequirements: {
+          checking: false,
+          msg: 'Sorry our Demo backend is on vacation.',
+        }
+      })
+
+    } else {
+      setPortalProcess({
+        hasRequirements: {
+          checking: true,
+          msg: 'Open your GiD app and approve proof request',
+        }
+      })
+    }
+
+    return false
+  }
 
   const handlePortalGrab = useCallback(
     async (interaction) => {
@@ -50,18 +89,14 @@ export function WorldInteraction({ session, world, activeCall }: WorldInteractio
 
       try {
         setPortalProcess({});
-        console.log('TIS THAT', window.fetch, interaction)
 
+        const { uri, name } = interaction;
 
-        const { uri } = interaction;
-        if (uri === '') {
-          //await fetch('https://awerawr/can-join/:portal_name')
-        }
         if (!uri) throw Error("Portal does not have valid matrix id/alias");
 
-        setPortalProcess({ hasRequirements: 'Open your GiD app and check for requirements..' });
-
-        //if(1=='1') { return }
+        if (await handleGiDPortal(name) === false) {
+          return
+        }
 
         const parsedUri = parseMatrixUri(uri);
         if (parsedUri instanceof URL) {

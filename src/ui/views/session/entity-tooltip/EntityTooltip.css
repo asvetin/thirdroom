@@ -25,8 +25,15 @@
   bottom: 1px;
 }
 
-.EntityTooltip__kvaj {
-  background-color: #ff9933;
-  font-size: 33px;
-  line-height: 33px;
+.EntityTooltip__requirements {
+  background-color: #7c2f5d;
+}
+.EntityTooltip__requirements > * {
+  font-size: 23px;
+  line-height: 27px;
+  margin: 4px 6px;
+}
+
+.EntityTooltip__requirements.checking {
+  background-color: #467c48;
 }
