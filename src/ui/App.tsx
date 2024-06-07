@@ -70,6 +70,7 @@ export function App() {
               <Suspense fallback={<SplashScreen />}>
                 <LandingPage />
               </Suspense>
+
             }
           />
           <Route

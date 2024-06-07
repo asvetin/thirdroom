@@ -68,7 +68,10 @@ export function UserMenu() {
               <DropdownMenuItem onSelect={() => setBugReport(true)}>Report Bug</DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
-                  if (confirm("Are you sure?")) logout();
+                  if (confirm("Are you sure?")) {
+                    localStorage.removeItem('gid_account')
+                    logout();
+                  }
                 }}
                 variant="danger"
               >

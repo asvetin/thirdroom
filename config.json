@@ -1,8 +1,8 @@
 {
-  "defaultHomeServer": "thirdroom.io",
-  "homeserverList": ["thirdroom.io", "matrix.org"],
+  "defaultHomeServer": "matrix.globalid.dev",
+  "homeserverList": ["matrix.globalid.dev", "thirdroom.io", "matrix.org"],
   "onboardingVersion": 1,
-  "whatsNewVersion": 1,
+  "whatsNewVersion": 0,
   "bugReportEndpointUrl": "https://element.io/bugreports/submit",
   "repositoryRoomIdOrAlias": "#repository-room:thirdroom.io",
   "staticOidcClients": {
@@ -10,5 +10,10 @@
       "client_id": "thirdroom",
       "guestKeycloakIdpHint": "guest"
     }
+  },
+  "gid": {
+    "kc_client_id": "cba8e888-48e8-4fac-a33a-82dd966269c5",
+    "domain": "globalid.dev",
+    "verifier_api": "https://thirdroom-gid-1a76fe926376.herokuapp.com"
   }
 }

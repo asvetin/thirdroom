@@ -1,4 +1,13 @@
-import { ChangeEvent, KeyboardEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+/* eslint-disable camelcase */
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   AbortableOperation,
   Client,
@@ -15,6 +24,7 @@ import { Button } from "../../atoms/button/Button";
 import { Label } from "../../atoms/text/Label";
 import { SettingTile } from "../components/setting-tile/SettingTile";
 import { useHydrogen } from "../../hooks/useHydrogen";
+import { useGidLoginParams } from "../../hooks/useGidLoginParams";
 import { Icon } from "../../atoms/icon/Icon";
 import PlanetIC from "../../../../res/ic/planet.svg";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -164,6 +174,63 @@ export default function LoginView() {
     form.homeserver.value = platform.config.defaultHomeServer;
   }, [platform]);
 
+  const { access_token, error_description } = useGidLoginParams()
+
+  useEffect(() => {
+    if (error_description !== undefined) {
+      setOidcError(error_description);
+    }
+
+    if (access_token === undefined) {
+      setAuthenticating(false)
+      return
+    }
+
+    setAuthenticating(true)
+
+    async function exchangeGidMatrixTokens () {
+      const url = `https://api.${platform.config.gid.domain}/v1/matrix/login`
+      const reqResult = await fetch(url, { headers: { authorization: `Bearer ${access_token}` } })
+      const body = await reqResult.json()
+      if (reqResult.status < 200 || reqResult.status >= 300) {
+        throw new Error(`${reqResult.status} - ${body.error_code || ''} ${body.message || ''}`)
+      } else if (body.access_token !== undefined && body.device_id !== undefined && body.user_id !== undefined) {
+
+        console.log('gid: exchange gid token for matrix token')
+        await client.startWithAuthData({
+          accessToken: body.access_token,
+          deviceId: body.device_id,
+          userId: body.user_id,
+          homeserver: `https://matrix.${platform.config.gid.domain}`,
+        })
+
+        console.log('gid: assure connection to verifier')
+        const verifierConnection = await fetch(`${platform.config.gid.verifier_api}/connection?token=${access_token}`)
+        console.log('gid: got connection to verifier:', verifierConnection)
+
+        setAuthenticating(false)
+
+        localStorage.setItem('gid_account', JSON.stringify({
+          ...JSON.parse(atob((access_token as string).split('.')[1])),
+          access_token,
+          verifierConnection: await verifierConnection.json(),
+        }))
+
+        window.location.href = '/'
+
+      } else {
+        throw new Error(`Do not know how to handle response: ${JSON.stringify(body, null, 2)}`)
+      }
+    }
+
+    exchangeGidMatrixTokens()
+      .catch(e => {
+        localStorage.removeItem('gid_account')
+        setAuthenticating(false)
+        setOidcError(`GiD token exchange error: ${e.message}`)
+      })
+  }, [ access_token, error_description, client, platform.config.gid ])
+
   const handleHomeserverSelect = (hs: string) => {
     if (!formRef.current) return;
     const form = formRef.current.elements as typeof formRef.current.elements & {
@@ -187,9 +254,30 @@ export default function LoginView() {
     queryHomeserver(hs);
   };
 
+  const handleLoginWithGiD = async () => {
+    const redirect = [
+      window.location.protocol,
+      '//',
+      window.location.host
+    ].join('')
+
+    const loginUrl = [
+      'https://',
+      `auth.${platform.config.gid.domain}`,
+      '/realms/globalid/protocol/openid-connect/auth',
+      `?client_id=${platform.config.gid.kc_client_id}`,
+      '&response_type=token&scope=openid&state=gid_login',
+      //'&response_mode=query',
+      `&redirect_uri=${redirect}`,
+    ].join('')
+
+    window.location.href = loginUrl
+  }
+
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!result) return;
+
 
     const form = event.currentTarget.elements as typeof event.currentTarget.elements & {
       homeserver: HTMLInputElement;
@@ -200,10 +288,16 @@ export default function LoginView() {
       return;
     }
 
+
     let loginMethod;
     setAuthenticating(true);
     setOidcError(undefined);
     const guest = (event.nativeEvent as SubmitEvent).submitter?.id === "guest";
+
+    if (form.homeserver.value.includes('globalid')) {
+      await handleLoginWithGiD()
+      return
+    }
 
     if (result.oidc) {
       const { issuer } = result.oidc;
@@ -245,6 +339,20 @@ export default function LoginView() {
     }
     setAuthenticating(false);
   };
+
+  const renderGiDLogin = () => (
+    <>
+      <div className="LoginView__iconAndText">
+        <Icon src="https://cdn.global.id/assets/logo/logo-square.png" size="lg" />
+        <Text variant="s1" weight="bold">
+          Login to GiD
+        </Text>
+      </div>
+        <Button size="lg" variant="primary" type="submit" disabled={authenticating}>
+          {authenticating ? <Dots color="on-primary" /> : "Proceed to login"}
+      </Button>
+    </>
+  )
 
   const renderPasswordLogin = () => (
     <>
@@ -362,7 +470,9 @@ export default function LoginView() {
                     </Button>
                   )
                 ) : (
-                  result.password && renderPasswordLogin()
+                  result.homeserver.includes('globalid')
+                    ? renderGiDLogin()
+                    : result.password && renderPasswordLogin()
                 )}
               </>
             ) : (

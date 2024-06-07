@@ -42,3 +42,12 @@
     margin-bottom: var(--sp-lg);
   }
 }
+
+.LoginView__iconAndText {
+  display: flex;
+  justify-content: center;
+}
+
+.LoginView__iconAndText .Icon {
+  margin: 0 9px;
+}
